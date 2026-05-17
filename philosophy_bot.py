@@ -11,6 +11,7 @@ App Commands (rechtermuisklik op bericht → Apps):
 """
 
 import os
+from threading import Thread
 
 import discord
 from discord import app_commands
@@ -18,16 +19,6 @@ import re
 from collections import Counter
 from flask import Flask
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot online"
-
-app.run(host="0.0.0.0", port=10000)
-# ──────────────────────────────────────────────
-# CONFIG  ← vul dit in
-# ──────────────────────────────────────────────
 TOKEN = os.getenv("BOT_TOKEN")
 TARGET_CHANNEL_ID = 1505313262860894308
 
@@ -35,6 +26,17 @@ TARGET_CHANNEL_ID = 1505313262860894308
 # Laat None voor global commands (duurt ~1 uur om te verschijnen).
 GUILD_ID = None  # Bijv: 123456789012345678
 
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is alive"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+Thread(target=run_web).start()
 # ──────────────────────────────────────────────
 # KEYWORD EXTRACTIE (zonder AI)
 # ──────────────────────────────────────────────
