@@ -16,7 +16,15 @@ import discord
 from discord import app_commands
 import re
 from collections import Counter
+from flask import Flask
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot online"
+
+app.run(host="0.0.0.0", port=10000)
 # ──────────────────────────────────────────────
 # CONFIG  ← vul dit in
 # ──────────────────────────────────────────────
