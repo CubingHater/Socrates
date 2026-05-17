@@ -119,7 +119,7 @@ CONCEPT_MAP = {
     "“You will die in a house fire” said the oracle. I am a shrimp. I live in the ocean. And house fires cannot start in the ocean. Today I left my house to do my shrimpy business, like all shrimps do. When I returned home, I decided to go play some florr.io to relax myself and have some fun. Then I decided to go see the oracle because why not. “You will die in a house fire” said the oracle again. Surely this had to be false. Then I smelt something burning. The smell of smoke only grew bigger. Eventually I decided to check where the smoke was coming from, and guess what? It was coming from my house. Fearing for my life, I decided to escape my house, but all the exits were blocked. How is this possible? House fires cannot start in the ocean, but how did I have one anyway? Was I really going to die? Am I really going to face my worst nightmare? Becoming a fried shrimp?": "being a fried shrimp",
     "house fires cannot start in the ocean": "being a fried shrimp",
     "stole": "stealing", "steal": "stealing", "stole from": "stealing", "stole my": "stealing", "stole your": "stealing", "stole his": "stealing", "stole her": "stealing", "stole their": "stealing", "stole our": "stealing", "stole the": "stealing",
-
+    "suiko": "blood",
 }
 
 VERB_CONCEPTS = {
