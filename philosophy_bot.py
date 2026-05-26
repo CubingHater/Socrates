@@ -11,8 +11,11 @@ App Commands (rechtermuisklik op bericht → Apps):
 """
 
 import os
+import asyncio
+import time
 from threading import Thread
 
+import aiohttp
 import discord
 from discord import app_commands
 import re
@@ -25,6 +28,20 @@ TARGET_CHANNEL_ID = 1505313262860894308
 # Optioneel: je server ID voor instant command-sync tijdens development.
 # Laat None voor global commands (duurt ~1 uur om te verschijnen).
 GUILD_ID = None  # Bijv: 123456789012345678
+
+# ── JSONBin config ──
+JSONBIN_API_KEY        = os.getenv("JSONBIN_API_KEY", "$2a$10$kZ4LseHUcd69pSM2x84I6OdxrlzUQqbxvWTPxxZS/6pKwugrLnxha")
+JSONBIN_SUGGESTIONS_ID = "6a1605d58ef04f45381ec944"
+JSONBIN_REPORTS_ID     = "6a1605bef47d5c455c3a8adf"
+JSONBIN_HEADERS        = {
+    "Content-Type": "application/json",
+    "X-Master-Key": JSONBIN_API_KEY,
+}
+
+# ── GitHub keywords ──
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/CubingHater/Socrates/refs/heads/main/keywords.txt"
+GITHUB_KEYWORDS: dict = {}   # wordt geladen bij on_ready en elke 30 min ververst
+_last_github_load: float = 0
 
 app = Flask(__name__)
 
@@ -227,7 +244,7 @@ CONCEPT_MAP = {
     "morality": "morality", "ethics": "ethics", "justice": "justice",
     "fairness": "fairness", "equality": "equality", "privilege": "privilege",
     "suffering": "suffering", "sacrifice": "sacrifice", "loss": "loss",
-    "grief": "grief", "emptiness": "emptiness", "void": "the void",
+    "grief": "Geometry Dash reference", "emptiness": "emptiness", "void": "the void",
     "silence": "silence", "darkness": "darkness", "light": "light",
     "shadow": "your shadow", "reflection": "your reflection",
     "perception": "perception", "reality": "reality", "illusion": "illusion",
@@ -2539,6 +2556,83 @@ VERB_CONCEPTS = {
 }
 
 
+FALLBACKS = [
+    "what you know", "what you have", "what others think of you",
+    "your past", "your image", "your certainty", "your name",
+    "the version of you they know", "what keeps you going",
+    "what you show the world", "what you hide from the world",
+    "who you are when no one is watching", "what you tell yourself at night",
+    "everything you've been pretending not to feel",
+    "the part of you that no one sees", "what makes you feel alive",
+    "what remains when everything is stripped away",
+    "who you are when no one is clapping",
+    "the gap between who you are and who you want to be",
+    "what you're running from", "what you're running towards",
+    "who you are when everything goes wrong",
+    "your story before anyone else told it",
+    "the silence between your thoughts",
+    "what you refuse to admit",
+]
+
+
+def parse_keywords_txt(text: str) -> dict:
+    """Parse keyword=value regels uit keywords.txt."""
+    result = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or line.startswith('//'):
+            continue
+        if '=' in line:
+            sep = line.index('=')
+        elif ':' in line:
+            sep = line.index(':')
+        else:
+            continue
+        key = line[:sep].strip().strip("'\"").lower()
+        val = line[sep+1:].strip().strip("'\"")
+        if key and val:
+            result[key] = val
+    return result
+
+
+async def load_github_keywords() -> None:
+    """Haal keywords.txt op van GitHub en merge in CONCEPT_MAP."""
+    global GITHUB_KEYWORDS, _last_github_load
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(GITHUB_RAW_URL, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    text = await resp.text()
+                    GITHUB_KEYWORDS = parse_keywords_txt(text)
+                    CONCEPT_MAP.update(GITHUB_KEYWORDS)
+                    _last_github_load = time.time()
+                    print(f"✅ GitHub keywords geladen: {len(GITHUB_KEYWORDS)} entries")
+    except Exception as e:
+        print(f"⚠️  GitHub keywords laden mislukt: {e}")
+
+
+async def save_to_jsonbin(bin_id: str, entry: dict) -> None:
+    """Voeg een entry toe aan een JSONBin bin."""
+    url = f"https://api.jsonbin.io/v3/b/{bin_id}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Huidige inhoud ophalen
+            async with session.get(url + "/latest", headers=JSONBIN_HEADERS) as resp:
+                data = await resp.json()
+                current = data.get("record", [])
+                if not isinstance(current, list):
+                    current = []
+                current = [x for x in current if not x.get("init")]
+
+            # Nieuwe entry toevoegen en terugschrijven
+            current.insert(0, entry)
+            async with session.put(url, headers=JSONBIN_HEADERS, json=current) as resp:
+                if resp.status != 200:
+                    print(f"⚠️  JSONBin schrijven mislukt: HTTP {resp.status}")
+    except Exception as e:
+        print(f"⚠️  JSONBin fout: {e}")
+
+
 def extract_power(message_text: str) -> str:
     text = message_text.lower()
     text = re.sub(r"https?://\S+", "", text)
@@ -2561,98 +2655,7 @@ def extract_power(message_text: str) -> str:
         freq = Counter(candidates)
         return max(candidates, key=lambda w: (freq[w], len(w)))
 
-    # Vervang je huidige fallbacks lijst met deze
-    # Zoek in je bot naar: fallbacks = [ en vervang de hele lijst
-
-    fallbacks = [
-        # Identiteit
-        "what you know", "what you have", "what others think of you",
-        "your past", "your image", "your certainty", "your name",
-        "your story", "your reputation", "your title", "your role",
-        "your label", "your mask", "your facade", "your reflection",
-        "your shadow", "your ego", "your pride", "your shame",
-        "your secrets", "your lies", "your excuses", "your assumptions",
-        "your beliefs", "your opinions", "your perspective", "your narrative",
-        "your identity", "your self-image", "your self-worth", "your confidence",
-        "your insecurities", "your fears", "your doubts", "your regrets",
-        "your grudges", "your biases", "your expectations", "your standards",
-
-        # Bezittingen & status
-        "what you own", "what you've earned", "what you've built",
-        "what you've lost", "what you've been given", "what you've taken",
-        "your possessions", "your achievements", "your awards", "your trophies",
-        "your titles", "your medals", "your certificates", "your degrees",
-        "your salary", "your savings", "your investments", "your assets",
-        "your house", "your car", "your clothes", "your phone",
-        "your followers", "your likes", "your views", "your clout",
-        "your platform", "your reach", "your influence", "your brand",
-        "your status", "your rank", "your position", "your privilege",
-
-        # Relaties
-        "the people who need you", "the people who love you",
-        "the people who fear you", "the people who follow you",
-        "the people who left you", "the people who stayed",
-        "your relationships", "your connections", "your allies",
-        "your enemies", "your rivals", "your fans", "your haters",
-        "your family", "your friends", "your partner", "your community",
-        "their approval", "their validation", "their attention", "their respect",
-        "their fear", "their admiration", "their loyalty", "their trust",
-
-        # Vermogen & talent
-        "your talent", "your skill", "your ability", "your intelligence",
-        "your creativity", "your charisma", "your charm", "your wit",
-        "your discipline", "your willpower", "your ambition", "your drive",
-        "your hustle", "your grind", "your persistence", "your resilience",
-        "your potential", "your gifts", "your strengths", "your advantages",
-        "your experience", "your expertise", "your knowledge", "your wisdom",
-        "your voice", "your words", "your ideas", "your vision",
-        "your art", "your music", "your craft", "your work",
-
-        # Emoties & innerlijk
-        "your anger", "your pain", "your sadness", "your joy",
-        "your love", "your hate", "your hope", "your despair",
-        "your passion", "your obsession", "your addiction", "your comfort",
-        "your trauma", "your healing", "your growth", "your wounds",
-        "your dreams", "your nightmares", "your memories", "your fantasies",
-        "your longing", "your emptiness", "your fullness", "your hunger",
-        "your silence", "your noise", "your chaos", "your peace",
-        "your light", "your darkness", "your warmth", "your coldness",
-
-        # Tijd & verandering
-        "your past", "your future", "your youth", "your age",
-        "your beginnings", "your endings", "your failures", "your victories",
-        "your progress", "your stagnation", "your momentum", "your stillness",
-        "the time you've spent", "the time you've wasted", "the time you have left",
-        "what you used to be", "what you're becoming", "what you once had",
-        "what you've sacrificed", "what you've survived", "what you've forgotten",
-
-        # Filosofisch & abstract
-        "your certainty", "your uncertainty", "your truth", "your illusions",
-        "your purpose", "your meaning", "your direction", "your path",
-        "your faith", "your doubt", "your beliefs", "your principles",
-        "your morals", "your values", "your ethics", "your code",
-        "your karma", "your fate", "your luck", "your choices",
-        "your freedom", "your chains", "your limitations", "your potential",
-        "the idea of you", "the version of you they know",
-        "the version of you that never existed",
-        "the life you imagined", "the life you're living",
-        "the gap between who you are and who you want to be",
-        "the distance between your words and your actions",
-        "the silence between your thoughts",
-        "everything you've been pretending not to feel",
-        "the part of you that no one sees",
-        "the part of you that everyone sees",
-        "what you show the world", "what you hide from the world",
-        "what you tell yourself at night", "what you refuse to admit",
-        "what keeps you going", "what holds you back",
-        "what makes you feel alive", "what makes you feel empty",
-        "what you're running from", "what you're running towards",
-        "what you'd be without the noise", "what remains when everything is stripped away",
-        "who you are when no one is watching",
-        "who you are when everything goes wrong",
-        "who you are when no one is clapping",
-    ]
-    return fallbacks[len(message_text) % len(fallbacks)]
+    return FALLBACKS[len(message_text) % len(FALLBACKS)]
 
 
 def build_question(power: str) -> str:
@@ -2732,17 +2735,87 @@ async def philosophize_dm(
         )
 
 
+@tree.command(name="suggest", description="Stel een nieuw keyword voor aan Socrates")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+async def suggest_keyword(interaction: discord.Interaction, keyword: str, maps_to: str):
+    """Laat een gebruiker een keyword voorstellen. Wordt opgeslagen in JSONBin voor review."""
+    await interaction.response.defer(ephemeral=True)
+
+    kw_lower = keyword.strip().lower()
+    existing = CONCEPT_MAP.get(kw_lower)
+
+    entry = {
+        "type": "suggestion",
+        "keyword": keyword.strip(),
+        "value": maps_to.strip(),
+        "existingValue": existing,
+        "sourceInput": f"Discord: {interaction.user.name} ({interaction.user.id})",
+        "timestamp": discord.utils.utcnow().isoformat(),
+        "id": int(discord.utils.utcnow().timestamp() * 1000),
+    }
+
+    await save_to_jsonbin(JSONBIN_SUGGESTIONS_ID, entry)
+
+    if existing:
+        await interaction.followup.send(
+            f"✦ Voorstel ontvangen! Let op: **{keyword}** bestaat al en mapt naar **{existing}**. "
+            f"Je alternatief (**{maps_to}**) wordt ter review gestuurd.",
+            ephemeral=True,
+        )
+    else:
+        await interaction.followup.send(
+            f"✦ Voorstel ontvangen! **{keyword}** → **{maps_to}** wordt ter review gestuurd.",
+            ephemeral=True,
+        )
+
+
+@tree.command(name="report", description="Rapporteer een problematische Socrates-uitkomst")
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@app_commands.allowed_installs(guilds=True, users=True)
+async def report_output(interaction: discord.Interaction, reden: str, keyword: str = ""):
+    """Laat een gebruiker een uitkomst rapporteren. Wordt opgeslagen in JSONBin voor review."""
+    await interaction.response.defer(ephemeral=True)
+
+    entry = {
+        "type": "report",
+        "reason": reden.strip(),
+        "detectedConcept": keyword.strip() or None,
+        "power": None,
+        "question": f"Discord rapport van {interaction.user.name} ({interaction.user.id})",
+        "timestamp": discord.utils.utcnow().isoformat(),
+        "id": int(discord.utils.utcnow().timestamp() * 1000),
+    }
+
+    await save_to_jsonbin(JSONBIN_REPORTS_ID, entry)
+    await interaction.followup.send(
+        "⚑ Rapport ontvangen. Bedankt — het wordt handmatig beoordeeld.",
+        ephemeral=True,
+    )
+
+
 # ──────────────────────────────────────────────
 # EVENTS
 # ──────────────────────────────────────────────
 
 @client.event
 async def on_ready():
-        await tree.sync()
-        print(f"⚡ Commands gesync (instant)")
-        if guild_obj:
-            await tree.sync(guild=guild_obj)
-            print(f"⚡ Commands gesync naar guild {GUILD_ID}")
+    await tree.sync()
+    print(f"⚡ Commands gesync (global)")
+    if guild_obj:
+        await tree.sync(guild=guild_obj)
+        print(f"⚡ Commands gesync naar guild {GUILD_ID}")
+
+    # GitHub keywords laden bij opstart
+    await load_github_keywords()
+
+    # Elke 30 minuten opnieuw laden
+    async def refresh_loop():
+        while True:
+            await asyncio.sleep(30 * 60)
+            await load_github_keywords()
+
+    client.loop.create_task(refresh_loop())
 
 
 @client.event
