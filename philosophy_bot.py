@@ -1,12 +1,12 @@
 """
 Philosophy Discord Bot
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Auto-reageert in channel 1505313262860894308 met:
+Auto-responds in channel 1505313262860894308 with:
   "If [concept] is your power, what are you without it?"
 
-App Commands (rechtermuisklik op bericht → Apps):
-  • Philosophize        → stuurt de vraag als reply in het kanaal
-  • Philosophize → DM   → stuurt de vraag privé naar jou
+App Commands (right-click on message → Apps):
+  • Philosophize        → sends the question as a reply in the channel
+  • Philosophize → DM   → sends the question privately to you
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -25,9 +25,9 @@ from flask import Flask
 TOKEN = os.getenv("BOT_TOKEN")
 TARGET_CHANNEL_ID = 1505313262860894308
 
-# Optioneel: je server ID voor instant command-sync tijdens development.
-# Laat None voor global commands (duurt ~1 uur om te verschijnen).
-GUILD_ID = None  # Bijv: 123456789012345678
+# Optional: your server ID for instant command sync during development.
+# Leave None for global commands (takes ~1 hour to appear).
+GUILD_ID = None  # e.g. 123456789012345678
 
 # ── JSONBin config ──
 JSONBIN_API_KEY        = os.getenv("JSONBIN_API_KEY", "$2a$10$kZ4LseHUcd69pSM2x84I6OdxrlzUQqbxvWTPxxZS/6pKwugrLnxha")
@@ -40,7 +40,7 @@ JSONBIN_HEADERS        = {
 
 # ── GitHub keywords ──
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/CubingHater/Socrates/refs/heads/main/keywords.txt"
-GITHUB_KEYWORDS: dict = {}   # wordt geladen bij on_ready en elke 30 min ververst
+GITHUB_KEYWORDS: dict = {}   # loaded on on_ready and refreshed every 30 min
 _last_github_load: float = 0
 
 app = Flask(__name__)
@@ -55,7 +55,7 @@ def run_web():
 
 Thread(target=run_web).start()
 # ──────────────────────────────────────────────
-# KEYWORD EXTRACTIE (zonder AI)
+# KEYWORD EXTRACTION (no AI)
 # ──────────────────────────────────────────────
 
 STOPWORDS = {
@@ -2596,7 +2596,7 @@ def parse_keywords_txt(text: str) -> dict:
 
 
 async def load_github_keywords() -> None:
-    """Haal keywords.txt op van GitHub en merge in CONCEPT_MAP."""
+    """Fetch keywords.txt from GitHub and merge into CONCEPT_MAP."""
     global GITHUB_KEYWORDS, _last_github_load
     try:
         async with aiohttp.ClientSession() as session:
@@ -2606,17 +2606,17 @@ async def load_github_keywords() -> None:
                     GITHUB_KEYWORDS = parse_keywords_txt(text)
                     CONCEPT_MAP.update(GITHUB_KEYWORDS)
                     _last_github_load = time.time()
-                    print(f"✅ GitHub keywords geladen: {len(GITHUB_KEYWORDS)} entries")
+                    print(f"✅ GitHub keywords loaded: {len(GITHUB_KEYWORDS)} entries")
     except Exception as e:
-        print(f"⚠️  GitHub keywords laden mislukt: {e}")
+        print(f"⚠️  Failed to load GitHub keywords: {e}")
 
 
 async def save_to_jsonbin(bin_id: str, entry: dict) -> None:
-    """Voeg een entry toe aan een JSONBin bin."""
+    """Append an entry to a JSONBin bin."""
     url = f"https://api.jsonbin.io/v3/b/{bin_id}"
     try:
         async with aiohttp.ClientSession() as session:
-            # Huidige inhoud ophalen
+            # Fetch current contents
             async with session.get(url + "/latest", headers=JSONBIN_HEADERS) as resp:
                 data = await resp.json()
                 current = data.get("record", [])
@@ -2624,13 +2624,13 @@ async def save_to_jsonbin(bin_id: str, entry: dict) -> None:
                     current = []
                 current = [x for x in current if not x.get("init")]
 
-            # Nieuwe entry toevoegen en terugschrijven
+            # Prepend new entry and write back
             current.insert(0, entry)
             async with session.put(url, headers=JSONBIN_HEADERS, json=current) as resp:
                 if resp.status != 200:
-                    print(f"⚠️  JSONBin schrijven mislukt: HTTP {resp.status}")
+                    print(f"⚠️  JSONBin write failed: HTTP {resp.status}")
     except Exception as e:
-        print(f"⚠️  JSONBin fout: {e}")
+        print(f"⚠️  JSONBin error: {e}")
 
 
 def extract_power(message_text: str) -> str:
@@ -2676,7 +2676,7 @@ guild_obj = discord.Object(id=GUILD_ID) if GUILD_ID else None
 
 
 # ──────────────────────────────────────────────
-# APP COMMANDS  (rechtermuisklik → Apps)
+# APP COMMANDS  (right-click → Apps)
 # ──────────────────────────────────────────────
 
 @tree.context_menu(name="Philosophize")
@@ -2735,11 +2735,11 @@ async def philosophize_dm(
         )
 
 
-@tree.command(name="suggest", description="Stel een nieuw keyword voor aan Socrates")
+@tree.command(name="suggest", description="Suggest a new keyword to Socrates")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
 async def suggest_keyword(interaction: discord.Interaction, keyword: str, maps_to: str):
-    """Laat een gebruiker een keyword voorstellen. Wordt opgeslagen in JSONBin voor review."""
+    """Lets a user suggest a keyword. Stored in JSONBin for review."""
     await interaction.response.defer(ephemeral=True)
 
     kw_lower = keyword.strip().lower()
@@ -2759,22 +2759,22 @@ async def suggest_keyword(interaction: discord.Interaction, keyword: str, maps_t
 
     if existing:
         await interaction.followup.send(
-            f"✦ Voorstel ontvangen! Let op: **{keyword}** bestaat al en mapt naar **{existing}**. "
-            f"Je alternatief (**{maps_to}**) wordt ter review gestuurd.",
+            f"✦ Suggestion received! Note: **{keyword}** already maps to **{existing}**. "
+            f"Your alternative (**{maps_to}**) has been sent for review.",
             ephemeral=True,
         )
     else:
         await interaction.followup.send(
-            f"✦ Voorstel ontvangen! **{keyword}** → **{maps_to}** wordt ter review gestuurd.",
+            f"✦ Suggestion received! **{keyword}** → **{maps_to}** has been sent for review.",
             ephemeral=True,
         )
 
 
-@tree.command(name="report", description="Rapporteer een problematische Socrates-uitkomst")
+@tree.command(name="report", description="Report a problematic Socrates output")
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.allowed_installs(guilds=True, users=True)
 async def report_output(interaction: discord.Interaction, reden: str, keyword: str = ""):
-    """Laat een gebruiker een uitkomst rapporteren. Wordt opgeslagen in JSONBin voor review."""
+    """Lets a user report an output. Stored in JSONBin for review."""
     await interaction.response.defer(ephemeral=True)
 
     entry = {
@@ -2782,14 +2782,14 @@ async def report_output(interaction: discord.Interaction, reden: str, keyword: s
         "reason": reden.strip(),
         "detectedConcept": keyword.strip() or None,
         "power": None,
-        "question": f"Discord rapport van {interaction.user.name} ({interaction.user.id})",
+        "question": f"Discord report from {interaction.user.name} ({interaction.user.id})",
         "timestamp": discord.utils.utcnow().isoformat(),
         "id": int(discord.utils.utcnow().timestamp() * 1000),
     }
 
     await save_to_jsonbin(JSONBIN_REPORTS_ID, entry)
     await interaction.followup.send(
-        "⚑ Rapport ontvangen. Bedankt — het wordt handmatig beoordeeld.",
+        "⚑ Report received. Thank you — it will be reviewed manually.",
         ephemeral=True,
     )
 
@@ -2801,15 +2801,15 @@ async def report_output(interaction: discord.Interaction, reden: str, keyword: s
 @client.event
 async def on_ready():
     await tree.sync()
-    print(f"⚡ Commands gesync (global)")
+    print(f"⚡ Commands synced (global)")
     if guild_obj:
         await tree.sync(guild=guild_obj)
-        print(f"⚡ Commands gesync naar guild {GUILD_ID}")
+        print(f"⚡ Commands synced to guild {GUILD_ID}")
 
-    # GitHub keywords laden bij opstart
+    # Load GitHub keywords on startup
     await load_github_keywords()
 
-    # Elke 30 minuten opnieuw laden
+    # Reload every 30 minutes
     async def refresh_loop():
         while True:
             await asyncio.sleep(30 * 60)
@@ -2847,6 +2847,6 @@ async def philosophize_slash(interaction: discord.Interaction, tekst: str):
 # ──────────────────────────────────────────────
 if __name__ == "__main__":
     if TOKEN == "JOUW_BOT_TOKEN_HIER":
-        print("❌ Vul je bot token in bij TOKEN!")
+        print("❌ Please set your bot token in TOKEN!")
     else:
         client.run(TOKEN)
