@@ -6844,5 +6844,6 @@
     "zależność": "zależność",
     "heteronomia": "heteronomia",
     "samowystarczalność": "samowystarczalność",
-    "potrzeba innych": "potrzeba innych"
+    "potrzeba innych": "potrzeba innych",
+    "greeting": "your greeting"
 }
