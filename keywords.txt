@@ -6845,5 +6845,6 @@
     "potrzeba innych": "potrzeba innych",
     "greeting": "your greeting",
     "greetings": "your greeting",
-    "zobros": "Nine Circles"
+    "zobros": "Nine Circles",
+    "raggen": "shooting sperm"
 }
