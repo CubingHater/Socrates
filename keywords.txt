@@ -6847,4 +6847,5 @@
     "greetings": "your greeting",
     "zobros": "Nine Circles",
     "raggen": "shooting sperm",
+    "injikal": "Enemies to Lovers",
 }
