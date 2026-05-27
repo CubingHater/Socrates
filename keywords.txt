@@ -192,8 +192,6 @@
     "dog": "being a furry",
     "david": "leaking everything",
     "davidaa": "leaking everything",
-    "stierstraat 11": "leaking everything",
-    "stierstraat11": "leaking everything",
     "moeshie": "cuteness",
     "moe": "moe zijn",
     "shie": "cuteness",
