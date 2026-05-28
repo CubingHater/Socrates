@@ -1,12 +1,12 @@
 """
 Philosophy Discord Bot
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Auto-responds in channel 1505313262860894308 with:
+Auto-reageert in channel 1505313262860894308 met:
   "If [concept] is your power, what are you without it?"
 
-App Commands (right-click on message → Apps):
-  • Philosophize        → sends the question as a reply in the channel
-  • Philosophize → DM   → sends the question privately to you
+App Commands (rechtermuisklik op bericht → Apps):
+  • Philosophize        → stuurt de vraag als reply in het kanaal
+  • Philosophize → DM   → stuurt de vraag privé naar jou
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -25,23 +25,9 @@ from flask import Flask
 TOKEN = os.getenv("BOT_TOKEN")
 TARGET_CHANNEL_ID = 1505313262860894308
 
-# Optional: your server ID for instant command sync during development.
-# Leave None for global commands (takes ~1 hour to appear).
-GUILD_ID = None  # e.g. 123456789012345678
-
-# ── JSONBin config ──
-JSONBIN_API_KEY        = os.getenv("JSONBIN_API_KEY", "$2a$10$kZ4LseHUcd69pSM2x84I6OdxrlzUQqbxvWTPxxZS/6pKwugrLnxha")
-JSONBIN_SUGGESTIONS_ID = "6a1605d58ef04f45381ec944"
-JSONBIN_REPORTS_ID     = "6a1605bef47d5c455c3a8adf"
-JSONBIN_HEADERS        = {
-    "Content-Type": "application/json",
-    "X-Master-Key": JSONBIN_API_KEY,
-}
-
-# ── GitHub keywords ──
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/CubingHater/Socrates/refs/heads/main/keywords.txt"
-GITHUB_KEYWORDS: dict = {}   # loaded on on_ready and refreshed every 30 min
-_last_github_load: float = 0
+# Optioneel: je server ID voor instant command-sync tijdens development.
+# Laat None voor global commands (duurt ~1 uur om te verschijnen).
+GUILD_ID = None  # Bijv: 123456789012345678
 
 app = Flask(__name__)
 
@@ -54,8 +40,22 @@ def run_web():
     app.run(host="0.0.0.0", port=port)
 
 Thread(target=run_web).start()
+
+# ── GitHub keywords ──
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/CubingHater/Socrates/refs/heads/main/keywords.txt"
+GITHUB_KEYWORDS: dict = {}
+_last_github_load: float = 0
+
+# ── JSONBin config ──
+JSONBIN_API_KEY        = os.getenv("JSONBIN_API_KEY", "$2a$10$kZ4LseHUcd69pSM2x84I6OdxrlzUQqbxvWTPxxZS/6pKwugrLnxha")
+JSONBIN_SUGGESTIONS_ID = "6a1605d58ef04f45381ec944"
+JSONBIN_REPORTS_ID     = "6a1605bef47d5c455c3a8adf"
+JSONBIN_HEADERS        = {
+    "Content-Type": "application/json",
+    "X-Master-Key": JSONBIN_API_KEY,
+}
 # ──────────────────────────────────────────────
-# KEYWORD EXTRACTION (no AI)
+# KEYWORD EXTRACTIE (zonder AI)
 # ──────────────────────────────────────────────
 
 STOPWORDS = {
@@ -2556,42 +2556,38 @@ VERB_CONCEPTS = {
 }
 
 
-FALLBACKS = [
-    "what you know", "what you have", "what others think of you",
-    "your past", "your image", "your certainty", "your name",
-    "the version of you they know", "what keeps you going",
-    "what you show the world", "what you hide from the world",
-    "who you are when no one is watching", "what you tell yourself at night",
-    "everything you've been pretending not to feel",
-    "the part of you that no one sees", "what makes you feel alive",
-    "what remains when everything is stripped away",
-    "who you are when no one is clapping",
-    "the gap between who you are and who you want to be",
-    "what you're running from", "what you're running towards",
-    "who you are when everything goes wrong",
-    "your story before anyone else told it",
-    "the silence between your thoughts",
-    "what you refuse to admit",
-]
+def _clean_val(v: str) -> str:
+    """Strip stray quotes, commas, semicolons left over from JSON parsing."""
+    return v.lstrip('"\'').rstrip('"\',;').strip()
 
 
 def parse_keywords_txt(text: str) -> dict:
-    """Parse keyword=value regels uit keywords.txt."""
+    """Parse keywords.txt — supports JSON object or key=value lines."""
+    import json as _json
     result = {}
-    for line in text.splitlines():
+    stripped = text.strip()
+    if stripped.startswith('{'):
+        try:
+            cleaned = re.sub(r',(\s*[}\]])', r'\1', stripped)
+            obj = _json.loads(cleaned)
+            for k, v in obj.items():
+                if isinstance(v, str):
+                    result[k.lower()] = _clean_val(v)
+        except Exception:
+            for m in re.finditer(r'"([^"]+)"\s*:\s*"([^"]+)"', stripped):
+                result[m.group(1).lower()] = _clean_val(m.group(2))
+        return result
+    for line in stripped.splitlines():
         line = line.strip()
         if not line or line.startswith('#') or line.startswith('//'):
             continue
-        if '=' in line:
-            sep = line.index('=')
-        elif ':' in line:
-            sep = line.index(':')
-        else:
+        sep = line.find('=')
+        if sep == -1:
             continue
-        key = line[:sep].strip().strip("'\"").lower()
-        val = line[sep+1:].strip().strip("'\"")
-        if key and val:
-            result[key] = val
+        k = line[:sep].strip().strip('"\'').lower()
+        v = _clean_val(line[sep+1:].strip().strip('"\''))
+        if k and v:
+            result[k] = v
     return result
 
 
@@ -2616,15 +2612,12 @@ async def save_to_jsonbin(bin_id: str, entry: dict) -> None:
     url = f"https://api.jsonbin.io/v3/b/{bin_id}"
     try:
         async with aiohttp.ClientSession() as session:
-            # Fetch current contents
             async with session.get(url + "/latest", headers=JSONBIN_HEADERS) as resp:
                 data = await resp.json()
                 current = data.get("record", [])
                 if not isinstance(current, list):
                     current = []
                 current = [x for x in current if not x.get("init")]
-
-            # Prepend new entry and write back
             current.insert(0, entry)
             async with session.put(url, headers=JSONBIN_HEADERS, json=current) as resp:
                 if resp.status != 200:
@@ -2644,18 +2637,22 @@ def extract_power(message_text: str) -> str:
         for i in range(len(words) - length + 1):
             phrase = " ".join(words[i:i+length])
             if phrase in CONCEPT_MAP:
-                return CONCEPT_MAP[phrase]
+                return _clean_val(CONCEPT_MAP[phrase])
 
     for word in words:
         if word in VERB_CONCEPTS:
-            return VERB_CONCEPTS[word]
+            return _clean_val(VERB_CONCEPTS[word])
 
     candidates = [w for w in words if w not in STOPWORDS and len(w) >= 4 and w.isalpha()]
     if candidates:
         freq = Counter(candidates)
         return max(candidates, key=lambda w: (freq[w], len(w)))
 
-    return FALLBACKS[len(message_text) % len(FALLBACKS)]
+    # Vervang je huidige fallbacks lijst met deze
+    # Zoek in je bot naar: fallbacks = [ en vervang de hele lijst
+
+    
+    return fallbacks[len(message_text) % len(fallbacks)]
 
 
 def build_question(power: str) -> str:
@@ -2676,7 +2673,7 @@ guild_obj = discord.Object(id=GUILD_ID) if GUILD_ID else None
 
 
 # ──────────────────────────────────────────────
-# APP COMMANDS  (right-click → Apps)
+# APP COMMANDS  (rechtermuisklik → Apps)
 # ──────────────────────────────────────────────
 
 @tree.context_menu(name="Philosophize")
@@ -2741,33 +2738,21 @@ async def philosophize_dm(
 async def suggest_keyword(interaction: discord.Interaction, keyword: str, maps_to: str):
     """Lets a user suggest a keyword. Stored in JSONBin for review."""
     await interaction.response.defer(ephemeral=True)
-
     kw_lower = keyword.strip().lower()
     existing = CONCEPT_MAP.get(kw_lower)
-
     entry = {
-        "type": "suggestion",
-        "keyword": keyword.strip(),
-        "value": maps_to.strip(),
-        "existingValue": existing,
-        "sourceInput": f"Discord: {interaction.user.name} ({interaction.user.id})",
-        "timestamp": discord.utils.utcnow().isoformat(),
-        "id": int(discord.utils.utcnow().timestamp() * 1000),
+        "type": "suggestion", "keyword": keyword.strip(), "value": maps_to.strip(),
+        "existingValue": existing, "sourceInput": f"Discord: {interaction.user.name} ({interaction.user.id})",
+        "timestamp": discord.utils.utcnow().isoformat(), "id": int(discord.utils.utcnow().timestamp() * 1000),
     }
-
     await save_to_jsonbin(JSONBIN_SUGGESTIONS_ID, entry)
-
     if existing:
         await interaction.followup.send(
             f"✦ Suggestion received! Note: **{keyword}** already maps to **{existing}**. "
-            f"Your alternative (**{maps_to}**) has been sent for review.",
-            ephemeral=True,
-        )
+            f"Your alternative (**{maps_to}**) has been sent for review.", ephemeral=True)
     else:
         await interaction.followup.send(
-            f"✦ Suggestion received! **{keyword}** → **{maps_to}** has been sent for review.",
-            ephemeral=True,
-        )
+            f"✦ Suggestion received! **{keyword}** → **{maps_to}** has been sent for review.", ephemeral=True)
 
 
 @tree.command(name="report", description="Report a problematic Socrates output")
@@ -2776,22 +2761,13 @@ async def suggest_keyword(interaction: discord.Interaction, keyword: str, maps_t
 async def report_output(interaction: discord.Interaction, reden: str, keyword: str = ""):
     """Lets a user report an output. Stored in JSONBin for review."""
     await interaction.response.defer(ephemeral=True)
-
     entry = {
-        "type": "report",
-        "reason": reden.strip(),
-        "detectedConcept": keyword.strip() or None,
-        "power": None,
-        "question": f"Discord report from {interaction.user.name} ({interaction.user.id})",
-        "timestamp": discord.utils.utcnow().isoformat(),
-        "id": int(discord.utils.utcnow().timestamp() * 1000),
+        "type": "report", "reason": reden.strip(), "detectedConcept": keyword.strip() or None,
+        "power": None, "question": f"Discord report from {interaction.user.name} ({interaction.user.id})",
+        "timestamp": discord.utils.utcnow().isoformat(), "id": int(discord.utils.utcnow().timestamp() * 1000),
     }
-
     await save_to_jsonbin(JSONBIN_REPORTS_ID, entry)
-    await interaction.followup.send(
-        "⚑ Report received. Thank you — it will be reviewed manually.",
-        ephemeral=True,
-    )
+    await interaction.followup.send("⚑ Report received. Thank you — it will be reviewed manually.", ephemeral=True)
 
 
 # ──────────────────────────────────────────────
@@ -2801,20 +2777,17 @@ async def report_output(interaction: discord.Interaction, reden: str, keyword: s
 @client.event
 async def on_ready():
     await tree.sync()
-    print(f"⚡ Commands synced (global)")
+    print(f"✅ Logged in as {client.user}")
     if guild_obj:
         await tree.sync(guild=guild_obj)
         print(f"⚡ Commands synced to guild {GUILD_ID}")
 
-    # Load GitHub keywords on startup
     await load_github_keywords()
 
-    # Reload every 30 minutes
     async def refresh_loop():
         while True:
             await asyncio.sleep(30 * 60)
             await load_github_keywords()
-
     client.loop.create_task(refresh_loop())
 
 
@@ -2847,6 +2820,6 @@ async def philosophize_slash(interaction: discord.Interaction, tekst: str):
 # ──────────────────────────────────────────────
 if __name__ == "__main__":
     if TOKEN == "JOUW_BOT_TOKEN_HIER":
-        print("❌ Please set your bot token in TOKEN!")
+        print("❌ Vul je bot token in bij TOKEN!")
     else:
         client.run(TOKEN)
