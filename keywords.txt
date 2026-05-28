@@ -173,7 +173,7 @@
     "florr": "not touching grass",
     "flor": "not touching grass",
     "florrr": "not touching grass",
-    "cubing_pro": "math",
+    "cubing_pro": "enemies to lovers",
     "cubingpro": "math",
     "cubing_hater": "unemployedness",
     "cubing hater": "unemployedness",
@@ -1436,7 +1436,6 @@
     "dunning kruger": "the dunning-kruger effect",
     "footprint": "your footprint",
     "reason": "your reason",
-    "why": "your why",
     "north star": "your north star",
     "compass": "your moral compass",
     "anchor": "your anchor",
@@ -6848,4 +6847,10 @@
     "zobros": "Nine Circles",
     "raggen": "shooting sperm",
     "injikal": "Enemies to Lovers",
+    "peacefulgamer": "ragebaiting",
+    "davy": "setting off fireworks",
+    "neb": "loving minors",
+    "zoink": "wave",
+    "grote denkers": "Martijn J.",
+    "bored": "boredom"
 }
