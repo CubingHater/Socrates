@@ -173,7 +173,7 @@
     "florr": "not touching grass",
     "flor": "not touching grass",
     "florrr": "not touching grass",
-    "cubing_pro": "enemies to lovers",
+    "cubing_pro": "enemines to lovers",
     "cubingpro": "math",
     "cubing_hater": "unemployedness",
     "cubing hater": "unemployedness",
@@ -6846,11 +6846,12 @@
     "greetings": "your greeting",
     "zobros": "Nine Circles",
     "raggen": "shooting sperm",
-    "injikal": "Enemies to Lovers",
+    "injikal": "enemines to lovers",
     "peacefulgamer": "being a gay cat femboy",
     "davy": "setting off fireworks",
     "neb": "loving minors",
     "zoink": "wave",
     "grote denkers": "Martijn J.",
-    "bored": "boredom"
+    "bored": "boredom",
+    "goomba": "calling minors cute"
 }
