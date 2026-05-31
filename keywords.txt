@@ -4889,7 +4889,7 @@
     "glerp": "glerp",
     "flerp": "flerp",
     "skibidi toilet": "skibidi toilet",
-    "skibidi": "skibidi",
+    "skibidi": "skibidi sigma 67 tung tung tung sahur aura",
     "rizz": "rizz",
     "unspoken rizz": "unspoken rizz",
     "w rizz": "W rizz",
@@ -5913,7 +5913,7 @@
     "richtinggevend": "richtinggevend zijn",
     "doelloos": "doelloos zijn",
     "doelgericht": "doelgericht zijn",
-    "gefocust": "gefocust zijn",
+    "gefocust": "focusing",
     "afgeleid": "afgeleid zijn",
     "aanwezig": "aanwezig zijn",
     "afwezig": "afwezig zijn",
@@ -6853,5 +6853,9 @@
     "zoink": "wave",
     "grote denkers": "Martijn J.",
     "bored": "boredom",
-    "goomba": "calling minors cute"
+    "goomba": "calling minors cute",
+    "goonba": "saying minors are cute while you goon at the same time",
+    "core cyan": "skullbait (slowed+reverb)",
+    "spaceuk": "coughing",
+    "hello": "your greeting"
 }
