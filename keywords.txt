@@ -6857,5 +6857,7 @@
     "goonba": "saying minors are cute while you goon at the same time",
     "core cyan": "skullbait (slowed+reverb)",
     "spaceuk": "coughing",
-    "hello": "your greeting"
+    "hello": "your greeting",
+    "blank81180": "Better Graphic Animation IN 15",
+    "pedophile": "being a pedophile"
 }
