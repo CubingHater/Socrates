@@ -6859,5 +6859,10 @@
     "spaceuk": "coughing",
     "hello": "your greeting",
     "blank81180": "Better Graphic Animation IN 15",
-    "pedophile": "being a pedophile"
+    "pedophile": "being a pedophile",
+    "torner": "being underage",
+    "vietnamsrammer": "the urge to touch minors",
+    "vietnamrammer": "gooning",
+    "sonic wave": "your geometry dash reference",
+    "n word": "racism"
 }
